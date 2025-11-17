@@ -6,14 +6,22 @@ function makeCode() {
 }
 
 export default defineEventHandler(async event => {
-  const { name } = await readBody(event)
+  const { name, creatorId } = await readBody(event)
   if (!name)
     return sendError(
       event,
       createError({ statusCode: 400, statusMessage: 'Missing name' })
     )
   const db = await getDb()
-  const room = { _id: uuidv4(), name, code: makeCode(), createdAt: new Date() }
+  const room = {
+    _id: uuidv4(),
+    name,
+    code: makeCode(),
+    createdAt: new Date(),
+    creatorId: creatorId || null,
+    members: creatorId ? [creatorId] : [],
+    onlineUsers: [],
+  }
   await db.collection('rooms').insertOne(room as any)
   return room
 })

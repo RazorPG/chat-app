@@ -2,17 +2,31 @@
   <div class="flex flex-col h-screen">
     <div class="flex flex-col w-full h-full max-w-4xl mx-auto">
       <!-- Header -->
-      <div class="flex items-center justify-between p-6 pb-4">
-        <div class="flex items-center gap-2">
+      <div class="flex items-center justify-between p-6 pb-4 border-b">
+        <div class="flex items-center gap-3">
           <NuxtLink
             to="/rooms"
-            class="flex items-center gap-1 text-sm text-blue-600"
+            class="flex items-center justify-center w-10 h-10 text-gray-600 transition rounded-full hover:bg-gray-100"
+            title="Back to rooms"
           >
-            <XMarkIcon class="w-10 h-10" />
+            <XMarkIcon class="w-6 h-6" />
           </NuxtLink>
-          <h1 class="text-2xl">Room: {{ room?.name }}</h1>
+          <div>
+            <h1 class="text-2xl font-semibold">{{ room?.name }}</h1>
+            <div class="flex items-center gap-2 text-sm text-gray-600">
+              <span class="font-mono">Code: {{ room?.code }}</span>
+              <span class="text-gray-400">•</span>
+              <span class="flex items-center gap-1">
+                <span
+                  class="w-2 h-2 bg-green-500 rounded-full animate-pulse"
+                ></span>
+                {{ onlineCount }} online
+              </span>
+              <span class="text-gray-400">•</span>
+              <span>{{ memberCount }} members</span>
+            </div>
+          </div>
         </div>
-        <div></div>
       </div>
 
       <!-- Messages Area (Scrollable) -->
@@ -138,11 +152,28 @@
   let pollInterval = null
   const fileInput = ref(null)
   const sending = ref(false)
+  const onlineCount = ref(0)
+  const memberCount = ref(0)
 
   async function load() {
     room.value = await $fetch(`/api/rooms/${route.params.id}`)
     messages.value = await $fetch(`/api/rooms/${route.params.id}/messages`)
+    onlineCount.value = room.value?.onlineUsers?.length || 0
+    memberCount.value = room.value?.members?.length || 0
     scrollBottom()
+  }
+
+  async function updateOnlineStatus(action) {
+    if (!currentUserId.value) return
+    try {
+      const result = await $fetch(`/api/rooms/${route.params.id}/online`, {
+        method: 'POST',
+        body: { userId: currentUserId.value, action },
+      })
+      onlineCount.value = result.onlineCount
+    } catch (e) {
+      console.error('Failed to update online status:', e)
+    }
   }
 
   function formatTime(dateString) {
@@ -239,17 +270,22 @@
   }
 
   onMounted(load)
-  // set current user id from token at mount
-  onMounted(() => {
+
+  // set current user id from token and mark as online
+  onMounted(async () => {
     const p = decodeToken()
-    if (p?.userId) currentUserId.value = p.userId
+    if (p?.userId) {
+      currentUserId.value = p.userId
+      // Mark user as online when entering room
+      await updateOnlineStatus('join')
+    }
     // remember last room to allow quick return from /rooms
     try {
       localStorage.setItem('lastRoomId', route.params.id)
     } catch (e) {}
   })
 
-  // start polling for new messages so UI updates without refresh
+  // start polling for new messages and online count
   onMounted(() => {
     // poll every 2 seconds
     pollInterval = setInterval(async () => {
@@ -263,14 +299,33 @@
           messages.value = newMsgs
           scrollBottom()
         }
+
+        // Update online count and member count
+        const roomData = await $fetch(`/api/rooms/${route.params.id}`)
+        onlineCount.value = roomData?.onlineUsers?.length || 0
+        memberCount.value = roomData?.members?.length || 0
       } catch (e) {
         // ignore polling errors
-        console.error('Polling messages error', e)
+        console.error('Polling error', e)
       }
     }, 2000)
   })
 
-  onUnmounted(() => {
+  // Mark user as offline when leaving
+  onUnmounted(async () => {
     if (pollInterval) clearInterval(pollInterval)
+    await updateOnlineStatus('leave')
   })
+
+  // Also handle page unload/close
+  if (process.client) {
+    window.addEventListener('beforeunload', () => {
+      if (currentUserId.value) {
+        navigator.sendBeacon(
+          `/api/rooms/${route.params.id}/online`,
+          JSON.stringify({ userId: currentUserId.value, action: 'leave' })
+        )
+      }
+    })
+  }
 </script>
