@@ -13,6 +13,7 @@ export default defineEventHandler(async event => {
   let mediaUrl: string | null = null
   let mediaType: string | null = null
   let senderId: string | null = null
+  let location: any = null
 
   const contentType = (event.node.req.headers['content-type'] || '') as string
   if (contentType.includes('multipart/form-data')) {
@@ -85,10 +86,11 @@ export default defineEventHandler(async event => {
     mediaUrl = body.mediaUrl || null
     mediaType = body.mediaType || null
     senderId = body.senderId || null
+    location = body.location || null
   }
 
-  // Validasi: harus ada text atau mediaUrl
-  if (!text.trim() && !mediaUrl) {
+  // Validasi: harus ada text, mediaUrl, atau location
+  if (!text.trim() && !mediaUrl && !location) {
     throw createError({ statusCode: 400, message: 'Pesan tidak boleh kosong' })
   }
 
@@ -107,6 +109,11 @@ export default defineEventHandler(async event => {
     senderId,
     senderName,
     createdAt: new Date(),
+  }
+
+  // Add location if exists
+  if (location) {
+    msg.location = location
   }
 
   await db.collection('messages').insertOne(msg as any)

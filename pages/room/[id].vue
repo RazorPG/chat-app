@@ -68,6 +68,56 @@
                   }}
                 </div>
                 <div>{{ m.text }}</div>
+                <!-- Location Message with Preview -->
+                <div
+                  v-if="m.location"
+                  class="mt-2 overflow-hidden bg-white border rounded-lg cursor-pointer hover:shadow-lg transition-shadow"
+                  @click="openMap(m.location)"
+                >
+                  <!-- Map Preview (Static Image) -->
+                  <div class="relative w-full h-48 bg-gray-100">
+                    <img
+                      :src="`https://staticmap.openstreetmap.de/staticmap.php?center=${m.location.lat},${m.location.lng}&zoom=14&size=400x200&maptype=mapnik&markers=${m.location.lat},${m.location.lng},red-pushpin`"
+                      alt="Location preview"
+                      class="object-cover w-full h-full"
+                      loading="lazy"
+                      @error="e => (e.target.style.display = 'none')"
+                    />
+                    <div
+                      class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-black/40 to-transparent"
+                    >
+                      <div
+                        class="px-4 py-2 text-sm font-medium text-white bg-black rounded-full bg-opacity-70 backdrop-blur-sm"
+                      >
+                        🗺️ Click to view interactive map
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Location Info -->
+                  <div class="flex items-center gap-2 p-3 bg-gray-50">
+                    <svg
+                      class="w-5 h-5 text-red-500 flex-shrink-0"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                        clip-rule="evenodd"
+                      />
+                    </svg>
+                    <div class="flex-1 min-w-0">
+                      <div class="font-medium text-gray-900 truncate">
+                        📍 Location shared
+                      </div>
+                      <div class="text-xs text-gray-500 font-mono">
+                        {{ m.location.lat.toFixed(4) }}°,
+                        {{ m.location.lng.toFixed(4) }}°
+                      </div>
+                    </div>
+                    <div class="text-xs text-blue-600 font-medium">View →</div>
+                  </div>
+                </div>
                 <div v-if="m.mediaUrl" class="mt-2">
                   <img
                     v-if="m.mediaType?.startsWith('image')"
@@ -122,6 +172,34 @@
         >
           <PaperClipIcon class="w-5 h-5" />
         </button>
+        <!-- Location button -->
+        <button
+          type="button"
+          @click="shareLocation"
+          :disabled="sending"
+          class="flex items-center justify-center w-10 h-10 text-gray-600 transition border border-gray-300 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Share location"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+            />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+          </svg>
+        </button>
         <span
           v-if="file"
           class="max-w-[140px] truncate text-xs self-center text-gray-500"
@@ -135,6 +213,36 @@
           {{ sending ? 'Mengirim...' : 'Send' }}
         </button>
       </form>
+    </div>
+
+    <!-- Map Modal -->
+    <div
+      v-if="showMap"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+      @click="closeMap"
+    >
+      <div
+        class="relative w-full max-w-2xl p-4 bg-white rounded-lg shadow-xl"
+        @click.stop
+      >
+        <button
+          @click="closeMap"
+          class="absolute z-10 flex items-center justify-center w-8 h-8 text-gray-600 bg-white rounded-full shadow top-2 right-2 hover:bg-gray-100"
+        >
+          <XMarkIcon class="w-5 h-5" />
+        </button>
+        <div id="map" class="w-full rounded-lg h-96"></div>
+        <div class="mt-3 text-center">
+          <a
+            :href="`https://www.google.com/maps?q=${selectedLocation?.lat},${selectedLocation?.lng}`"
+            target="_blank"
+            rel="noopener"
+            class="inline-block px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700"
+          >
+            Open in Google Maps
+          </a>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -154,6 +262,9 @@
   const sending = ref(false)
   const onlineCount = ref(0)
   const memberCount = ref(0)
+  const showMap = ref(false)
+  const selectedLocation = ref(null)
+  let map = null
 
   async function load() {
     room.value = await $fetch(`/api/rooms/${route.params.id}`)
@@ -211,6 +322,89 @@
 
   function triggerFile() {
     if (fileInput.value) fileInput.value.click()
+  }
+
+  async function shareLocation() {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser')
+      return
+    }
+
+    if (sending.value) return
+
+    navigator.geolocation.getCurrentPosition(
+      async position => {
+        try {
+          sending.value = true
+          const location = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          }
+
+          const body = {
+            text: '📍 Shared a location',
+            location,
+            senderId: currentUserId.value,
+          }
+
+          await $fetch(`/api/rooms/${route.params.id}/messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body,
+          })
+
+          await load()
+        } catch (error) {
+          console.error('Share location error:', error)
+          alert('Failed to share location')
+        } finally {
+          sending.value = false
+        }
+      },
+      error => {
+        console.error('Geolocation error:', error)
+        alert('Unable to get your location. Please enable location access.')
+      }
+    )
+  }
+
+  function openMap(location) {
+    selectedLocation.value = location
+    showMap.value = true
+
+    nextTick(() => {
+      if (process.client && !map) {
+        import('leaflet').then(L => {
+          // Initialize map
+          map = L.default.map('map').setView([location.lat, location.lng], 15)
+
+          // Add OpenStreetMap tiles
+          L.default
+            .tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              attribution:
+                '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            })
+            .addTo(map)
+
+          // Add marker
+          L.default.marker([location.lat, location.lng]).addTo(map)
+
+          // Refresh map size
+          setTimeout(() => map.invalidateSize(), 100)
+        })
+      } else if (map) {
+        map.setView([location.lat, location.lng], 15)
+        setTimeout(() => map.invalidateSize(), 100)
+      }
+    })
+  }
+
+  function closeMap() {
+    showMap.value = false
+    if (map) {
+      map.remove()
+      map = null
+    }
   }
 
   async function sendMessage() {
