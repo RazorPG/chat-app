@@ -1,37 +1,48 @@
 <template>
-  <div class="flex flex-col h-screen">
-    <div class="flex flex-col w-full h-full max-w-4xl mx-auto">
+  <div class="flex flex-col h-screen bg-gray-50">
+    <div class="flex flex-col w-full h-full mx-auto md:max-w-4xl">
       <!-- Header -->
-      <div class="flex items-center justify-between p-6 pb-4 border-b">
-        <div class="flex items-center gap-3">
+      <div
+        class="flex items-center justify-between px-3 py-3 bg-white border-b shadow-sm md:px-6 md:py-4"
+      >
+        <div class="flex items-center flex-1 min-w-0 gap-2 md:gap-3">
           <NuxtLink
             to="/rooms"
-            class="flex items-center justify-center w-10 h-10 text-gray-600 transition rounded-full hover:bg-gray-100"
+            class="flex items-center justify-center flex-shrink-0 w-8 h-8 text-gray-600 transition rounded-full md:w-10 md:h-10 hover:bg-gray-100"
             title="Back to rooms"
           >
-            <XMarkIcon class="w-6 h-6" />
+            <XMarkIcon class="w-5 h-5 md:w-6 md:h-6" />
           </NuxtLink>
-          <div>
-            <h1 class="text-2xl font-semibold">{{ room?.name }}</h1>
-            <div class="flex items-center gap-2 text-sm text-gray-600">
-              <span class="font-mono">Code: {{ room?.code }}</span>
+          <div class="flex-1 min-w-0">
+            <h1 class="text-lg font-semibold truncate md:text-2xl">
+              {{ room?.name }}
+            </h1>
+            <div
+              class="flex items-center gap-1 text-xs text-gray-600 md:gap-2 md:text-sm"
+            >
+              <span class="font-mono truncate">Code: {{ room?.code }}</span>
               <span class="text-gray-400">•</span>
               <span class="flex items-center gap-1">
                 <span
-                  class="w-2 h-2 bg-green-500 rounded-full animate-pulse"
+                  class="w-1.5 h-1.5 md:w-2 md:h-2 bg-green-500 rounded-full animate-pulse"
                 ></span>
                 {{ onlineCount }} online
               </span>
               <span class="text-gray-400">•</span>
-              <span>{{ memberCount }} members</span>
+              <button
+                @click="showMembersModal = true"
+                class="transition cursor-pointer hover:text-blue-600 hover:underline"
+              >
+                {{ memberCount }} members
+              </button>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Messages Area (Scrollable) -->
-      <div class="flex-1 p-4 overflow-auto border-t border-b" ref="messagesEl">
-        <div v-for="m in messages" :key="m._id" class="mb-3">
+      <div class="flex-1 px-3 py-2 overflow-auto md:p-4" ref="messagesEl">
+        <div v-for="m in messages" :key="m._id" class="mb-2 md:mb-3">
           <div
             :class="
               m.senderId === currentUserId
@@ -41,7 +52,7 @@
           >
             <div
               :class="[
-                'max-w-lg',
+                'max-w-[85%] md:max-w-lg',
                 m.senderId === currentUserId ? 'text-right' : 'text-left',
               ]"
             >
@@ -55,13 +66,13 @@
               </div>
               <div
                 :class="[
-                  'mt-1 inline-block p-2 rounded',
+                  'mt-1 inline-block p-2 md:p-3 rounded',
                   m.senderId === currentUserId
                     ? 'bg-blue-600 text-white rounded-lg text-left'
-                    : 'bg-gray-100 text-gray-900 rounded-lg text-left',
+                    : 'bg-white text-gray-900 rounded-lg text-left shadow-sm',
                 ]"
               >
-                <div class="mb-1 text-xs font-semibold">
+                <div class="mb-1 text-xs font-semibold md:mb-1.5">
                   {{
                     m.senderName ||
                     (m.senderId === currentUserId ? 'You' : 'Unknown')
@@ -71,7 +82,7 @@
                 <!-- Location Message with Preview -->
                 <div
                   v-if="m.location"
-                  class="mt-2 overflow-hidden bg-white border rounded-lg cursor-pointer hover:shadow-lg transition-shadow"
+                  class="mt-2 overflow-hidden transition-shadow bg-white border rounded-lg cursor-pointer hover:shadow-lg"
                   @click="openMap(m.location)"
                 >
                   <!-- Map Preview (Static Image) -->
@@ -96,7 +107,7 @@
                   <!-- Location Info -->
                   <div class="flex items-center gap-2 p-3 bg-gray-50">
                     <svg
-                      class="w-5 h-5 text-red-500 flex-shrink-0"
+                      class="flex-shrink-0 w-5 h-5 text-red-500"
                       fill="currentColor"
                       viewBox="0 0 20 20"
                     >
@@ -110,12 +121,12 @@
                       <div class="font-medium text-gray-900 truncate">
                         📍 Location shared
                       </div>
-                      <div class="text-xs text-gray-500 font-mono">
+                      <div class="font-mono text-xs text-gray-500">
                         {{ m.location.lat.toFixed(4) }}°,
                         {{ m.location.lng.toFixed(4) }}°
                       </div>
                     </div>
-                    <div class="text-xs text-blue-600 font-medium">View →</div>
+                    <div class="text-xs font-medium text-blue-600">View →</div>
                   </div>
                 </div>
                 <div v-if="m.mediaUrl" class="mt-2">
@@ -147,11 +158,14 @@
       </div>
 
       <!-- Input Form (Fixed at Bottom) -->
-      <form @submit.prevent="sendMessage" class="flex gap-2 p-6 pt-4">
+      <form
+        @submit.prevent="sendMessage"
+        class="flex gap-1.5 md:gap-2 p-3 md:p-4 bg-white border-t"
+      >
         <input
           v-model="text"
-          placeholder="Message"
-          class="flex-1 p-2 border rounded"
+          placeholder="Type a message..."
+          class="flex-1 px-3 py-2 text-sm border rounded-full md:text-base md:px-4 md:rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           :disabled="sending"
         />
         <!-- Hidden native file input -->
@@ -167,21 +181,21 @@
           type="button"
           @click="triggerFile"
           :disabled="sending"
-          class="flex items-center justify-center w-10 h-10 text-gray-600 transition border border-gray-300 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="flex items-center justify-center flex-shrink-0 text-gray-600 transition border border-gray-300 rounded-full w-9 h-9 md:w-10 md:h-10 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
           title="Attach file"
         >
-          <PaperClipIcon class="w-5 h-5" />
+          <PaperClipIcon class="w-4 h-4 md:w-5 md:h-5" />
         </button>
         <!-- Location button -->
         <button
           type="button"
           @click="shareLocation"
           :disabled="sending"
-          class="flex items-center justify-center w-10 h-10 text-gray-600 transition border border-gray-300 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="flex items-center justify-center flex-shrink-0 text-gray-600 transition border border-gray-300 rounded-full w-9 h-9 md:w-10 md:h-10 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
           title="Share location"
         >
           <svg
-            class="w-5 h-5"
+            class="w-4 h-4 md:w-5 md:h-5"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -200,17 +214,31 @@
             />
           </svg>
         </button>
-        <span
-          v-if="file"
-          class="max-w-[140px] truncate text-xs self-center text-gray-500"
-          >{{ file.name }}</span
-        >
         <button
-          class="px-4 text-white rounded"
-          :class="sending ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600'"
+          class="flex-shrink-0 px-3 py-2 text-sm font-medium text-white rounded-full md:px-5 md:text-base"
+          :class="
+            sending
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700'
+          "
           :disabled="sending"
         >
-          {{ sending ? 'Mengirim...' : 'Send' }}
+          <span class="hidden md:inline">{{
+            sending ? 'Sending...' : 'Send'
+          }}</span>
+          <svg
+            class="w-5 h-5 md:hidden"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+            />
+          </svg>
         </button>
       </form>
     </div>
@@ -218,11 +246,11 @@
     <!-- Map Modal -->
     <div
       v-if="showMap"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
       @click="closeMap"
     >
       <div
-        class="relative w-full max-w-2xl p-4 bg-white rounded-lg shadow-xl"
+        class="relative w-full max-w-2xl p-3 bg-white rounded-lg shadow-xl md:p-4"
         @click.stop
       >
         <button
@@ -231,16 +259,82 @@
         >
           <XMarkIcon class="w-5 h-5" />
         </button>
-        <div id="map" class="w-full rounded-lg h-96"></div>
+        <div id="map" class="w-full h-64 rounded-lg md:h-96"></div>
         <div class="mt-3 text-center">
           <a
             :href="`https://www.google.com/maps?q=${selectedLocation?.lat},${selectedLocation?.lng}`"
             target="_blank"
             rel="noopener"
-            class="inline-block px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700"
+            class="inline-block px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 md:text-base"
           >
             Open in Google Maps
           </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Members Modal -->
+    <div
+      v-if="showMembersModal"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
+      @click="showMembersModal = false"
+    >
+      <div
+        class="relative w-full max-w-md p-4 bg-white rounded-lg shadow-xl md:p-6"
+        @click.stop
+      >
+        <button
+          @click="showMembersModal = false"
+          class="absolute z-10 flex items-center justify-center w-8 h-8 text-gray-600 bg-gray-100 rounded-full top-2 right-2 md:top-3 md:right-3 hover:bg-gray-200"
+        >
+          <XMarkIcon class="w-5 h-5" />
+        </button>
+
+        <h2 class="mb-3 text-lg font-semibold text-gray-900 md:mb-4 md:text-xl">
+          Room Members ({{ membersList.length }})
+        </h2>
+
+        <div class="overflow-y-auto max-h-72 md:max-h-96">
+          <div
+            v-if="membersList.length === 0"
+            class="py-8 text-center text-gray-500"
+          >
+            No members found
+          </div>
+          <div
+            v-for="member in membersList"
+            :key="member._id"
+            class="flex items-center gap-3 p-3 mb-2 border rounded-lg hover:bg-gray-50"
+          >
+            <!-- Avatar -->
+            <div
+              class="flex items-center justify-center flex-shrink-0 w-10 h-10 font-semibold text-white rounded-full bg-gradient-to-br from-blue-500 to-purple-600"
+            >
+              {{ getInitials(member.name) }}
+            </div>
+
+            <!-- Member Info -->
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 truncate">
+                {{ member.name }}
+              </div>
+            </div>
+
+            <!-- Online Status -->
+            <div class="flex items-center flex-shrink-0 gap-1">
+              <span
+                :class="[
+                  'w-2 h-2 rounded-full',
+                  isOnline(member._id)
+                    ? 'bg-green-500 animate-pulse'
+                    : 'bg-gray-300',
+                ]"
+              ></span>
+              <span class="text-xs text-gray-600">
+                {{ isOnline(member._id) ? 'Online' : 'Offline' }}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -264,6 +358,8 @@
   const memberCount = ref(0)
   const showMap = ref(false)
   const selectedLocation = ref(null)
+  const showMembersModal = ref(false)
+  const membersList = ref([])
   let map = null
 
   async function load() {
@@ -271,7 +367,46 @@
     messages.value = await $fetch(`/api/rooms/${route.params.id}/messages`)
     onlineCount.value = room.value?.onlineUsers?.length || 0
     memberCount.value = room.value?.members?.length || 0
+    await loadMembers()
     scrollBottom()
+  }
+
+  async function loadMembers() {
+    if (!room.value?.members || room.value.members.length === 0) {
+      membersList.value = []
+      return
+    }
+
+    try {
+      // Fetch user details for all members
+      const members = await Promise.all(
+        room.value.members.map(async memberId => {
+          try {
+            const user = await $fetch(`/api/users/${memberId}`)
+            return user
+          } catch (e) {
+            return { _id: memberId, name: 'Unknown User', email: '' }
+          }
+        })
+      )
+      membersList.value = members.filter(m => m)
+    } catch (error) {
+      console.error('Failed to load members:', error)
+      membersList.value = []
+    }
+  }
+
+  function getInitials(name) {
+    if (!name) return '?'
+    const parts = name.split(' ')
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase()
+    }
+    return name.substring(0, 2).toUpperCase()
+  }
+
+  function isOnline(userId) {
+    return room.value?.onlineUsers?.includes(userId) || false
   }
 
   async function updateOnlineStatus(action) {
@@ -496,8 +631,20 @@
 
         // Update online count and member count
         const roomData = await $fetch(`/api/rooms/${route.params.id}`)
+        const prevOnlineCount = onlineCount.value
+        const prevMemberCount = memberCount.value
+
         onlineCount.value = roomData?.onlineUsers?.length || 0
         memberCount.value = roomData?.members?.length || 0
+        room.value = roomData
+
+        // Reload members if count changed
+        if (
+          prevMemberCount !== memberCount.value ||
+          prevOnlineCount !== onlineCount.value
+        ) {
+          await loadMembers()
+        }
       } catch (e) {
         // ignore polling errors
         console.error('Polling error', e)

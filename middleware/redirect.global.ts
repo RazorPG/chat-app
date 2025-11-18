@@ -18,6 +18,10 @@ export default defineNuxtRouteMiddleware(to => {
 
     // If user is authenticated and trying to access auth pages, redirect to rooms
     if (isAuthenticated && authPages.includes(to.path)) {
+      if (process.client) {
+        window.location.href = '/rooms'
+        return
+      }
       return navigateTo('/rooms')
     }
 
@@ -26,6 +30,10 @@ export default defineNuxtRouteMiddleware(to => {
       !isAuthenticated &&
       protectedPages.some(page => to.path.startsWith(page))
     ) {
+      if (process.client) {
+        window.location.href = '/login'
+        return
+      }
       return navigateTo('/login')
     }
   }
